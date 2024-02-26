@@ -1,0 +1,30 @@
+Startup
+1. Go to each directory and run npm install then run npm run dev.
+2. locate to http://localhost:300 and test to upload a file.
+
+
+Architectures
+There're 2 microservices called file and noti, onr frontend build with nextjs client components.
+File service is responsible to store file infomation like url, file name, file type, size.
+Noti service is responsible for notification (in this case an email).
+
+A flow of operations.
+Firstly, we put the only .jpeg images file, fill out a valid email, and add text message.
+then click upload. frontend it will then called file service in /upload route, this route is responsible for
+checking file regardless of it a valid and not larger than 10 MB. if it pass, then file service will called S3 to generated 
+signedUrl, signedUrl in AWS was simply encryped of the file name, fiile type, we tend to do this to avoid our api
+to handle Bytes of file because it's a CPU intensive. Once frontend get the signedUrl back the client begin directly
+upload file to S3 service, so we avoid the scenario like 
+frontend -> backend -> S3 -> backend -> frontend.
+to 
+frontend -> backend -> frontend<string> -> S3 -> frontend -> backend.
+Once the frontend get respond back from S3, it's begin called file service /file route. This route 
+is responsible to produce message to kafka and self consume to get atomic operation.
+(atomic operation come from ACID in SQL db, it's meaning that either all operation secceed or nither succeed).
+We not to chooseing insert file info and produce to noti and let noti sending an email.
+because we can't get atomic from insert to db and send the notification.
+That why we produce first.
+
+The kafka message will then get consumed by both file and noti service.
+In file service, it's begin insert new data to it's database (mongodb in this case).
+In noti service, it's begin sending an email by given email address as well as message and file infomartion.
